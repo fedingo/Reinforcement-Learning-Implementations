@@ -14,7 +14,7 @@ Only on the first 2 I was able to achieve good results. The agents shown good pe
 
 ![Compare Graphs](Compare%20Result.PNG)
 
-For more details you can find my project presentation (HERE)[Project%20RL%20Implementations.pdf]
+For more details you can find my project presentation [HERE](Project%20RL%20Implementations.pdf)
 
 ## Usage
 
