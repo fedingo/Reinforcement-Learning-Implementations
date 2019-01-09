@@ -3,8 +3,8 @@ from abstractAgent import *
 
 class RandomAgent(abstractAgent):
 
-	def __init__(self, state_size, action_size, architecture):
-		super().__init__(state_size, action_size, architecture)
+	def __init__(self, state_size, action_size):
+		super().__init__(state_size, action_size, [])
 		print("Creating a Random Agent")
 
 	def build(self):

@@ -16,9 +16,9 @@ class abstractAgent:
 
 		self.architecture = architecture
 		
-		self.build()
 
 		self.tf_session = tf.Session()
+		self.build()
 		self.tf_session.run(tf.global_variables_initializer())
 
 	def store(self, dict_summary):
