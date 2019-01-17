@@ -26,9 +26,11 @@ class PGAgent(abstractAgent):
 		self.update_rate= 5
 		self.batch_size = 2048	# Batch size for the training
 
+		self.learning_rate = 5e-4
+
 		architecture = [64, 64]
 
-		super().__init__(state_size, action_size, architecture)
+		super().__init__(state_size, action_size, architecture, learning_rate = self.learning_rate)
 
 	## Currently NOT allowing for any Image Input
 	## Todo: add convolution 
@@ -128,7 +130,7 @@ class PGAgent(abstractAgent):
 	                                           self.d_rewards: reward_train 
                                                 })
 
-	def act(self, state):
+	def act(self, state, testing = False):
 
 		prob_distribution = self.tf_session.run(self.action_distribution, 
 							feed_dict={self.input_net: state.reshape([1,self.state_size])})

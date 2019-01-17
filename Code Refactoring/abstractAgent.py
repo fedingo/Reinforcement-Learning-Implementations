@@ -41,5 +41,5 @@ class abstractAgent:
 		raise NotImplementedError("Please implement the training method")
 
 	# function that returns some action
-	def act(self, state):
+	def act(self, state, testing = False):
 		raise NotImplementedError("Please implement the acting method")

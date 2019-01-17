@@ -1,6 +1,7 @@
-from keras.layers import Input, Dense, Conv2D, Flatten
+from keras.layers import Input, Dense, Conv2D, Flatten, Dropout
 from keras.models import Model, clone_model
 from keras.optimizers import Adam
+from keras import regularizers
 from keras import backend as K
 
 import random
@@ -22,21 +23,36 @@ class DQNAgent(abstractAgent):
 		print("Creating a DQN Agent")
 
 		self.exploration_rate  = 1
-		self.exploration_decay = 0.995
+		self.exploration_decay = 0.99
 		self.exploration_min   = 0.02
 
 		self.train_rate = 4
 		self.update_frozen = 50
-		self.batch_size = 32
+		self.batch_size = 16
 		self.double = True
 
-		learning_rate = 8e-4
+		learning_rate = 5e-4
 
 		architecture = {'conv' : [4, 16],
 						'fc'   : [64, 64]
 						}
 
 		super().__init__(state_size, action_size, architecture, learning_rate = learning_rate)
+
+	def __del__(self):
+		del self.model
+
+	def __reshaped_state_size__(self, dim = 1):
+		result = 0
+
+		if type(self.state_size) == type(1):
+			result = [dim, self.state_size]
+		elif type(self.state_size) == type(list()):
+			result = [dim] + self.state_size
+		else:
+			raise Exception("State_size type not supported")
+
+		return result
 
 	def build(self):
 
@@ -72,27 +88,21 @@ class DQNAgent(abstractAgent):
 			
 		self.model = Model(inputs=image_input, outputs=out)
 		self.model.compile(loss=huber_loss, optimizer=Adam(lr = self.learning_rate))
-		self.model.summary()
 
 		self.frozen_model = clone_model(self.model)
-		#self.sync_models()
+		self.frozen_model.set_weights(self.model.get_weights())
 
 
 	# function to define when to train the network
 	def hasToTrain(self, step, done, episode):
-		if done and episode % 20 == 0:
-			self.clear_memory()
 
 		if episode % self.update_frozen == 0 and done:
 			self.sync_models()
 
 		if done:
 			self.decay_explore()
-			print("Exploration rate: %.2f" % (self.exploration_rate), end=" ")
 
-		if step % self.train_rate == 0:
-			return True
-		return False
+		return step % self.train_rate == 0
 
 	def train(self):
 
@@ -113,11 +123,14 @@ class DQNAgent(abstractAgent):
 			action = obj['action']
 			reward = obj['reward']
 			next_s = obj['next_state']
+			done   = obj['done']
 
-			data_train = np.reshape(state, [1, self.state_size])	
+			stateSize = self.__reshaped_state_size__()
+
+			data_train = np.reshape(state, stateSize)
 			target = self.model.predict(data_train)[0]
 				
-			data_next = np.reshape(next_s, [1, self.state_size])
+			data_next = np.reshape(next_s, stateSize)
 			if self.double:
 				target_action = np.argmax(self.model.predict(data_next))
 				max_next_target = self.frozen_model.predict(data_next)[0][target_action]
@@ -125,30 +138,27 @@ class DQNAgent(abstractAgent):
 				max_next_target = np.max(self.frozen_model.predict(data_next)[0])
 				
 			target[action] = reward + self.gamma*max_next_target
+			if done:
+				target[action] = reward
 				
 			x_train.append(data_train)
 			y_train.append(target)
-			
+
+		stateSizeBatch = self.__reshaped_state_size__(self.batch_size)
 		x_train = np.array(x_train)
-		x_train = np.reshape(x_train, [self.batch_size, self.state_size])
+		x_train = np.reshape(x_train, stateSizeBatch)
 		y_train = np.array(y_train)
 		y_train = np.reshape(y_train, [self.batch_size, self.action_size])
 
 		self.model.train_on_batch(x_train, y_train)
 
-	def act(self, state):
-		if np.random.uniform(0,1) < self.exploration_rate:
+	def act(self, state, testing = False):
+		if np.random.uniform(0,1) < self.exploration_rate and not testing:
 			action = np.random.randint(self.action_size)
 		else:
-			global dim
-			if type(self.state_size) == type(1):
-				dim = [1, self.state_size]
-			elif type(self.state_size) == type(list()):
-				dim = [1] + self.state_size
-			else:
-				raise Exception("State_size type not supported")
+			stateSize = self.__reshaped_state_size__()
 
-			state = np.reshape(state, dim)
+			state = np.reshape(state, stateSize)
 			q_values = self.model.predict(state)[0]			
 			action = np.argmax(q_values)
 		
